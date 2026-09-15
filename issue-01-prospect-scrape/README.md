@@ -4,37 +4,48 @@ Turn public records into a ranked prospect list using a coding agent. This is th
 
 ## What this does
 
-A coding agent (Claude Code, Codex, pi) builds a Python tool that finds companies in a specific state (expired contracts, lapsed coverage, compliance flags), ranks them by urgency, and outputs a Streamlit dashboard.
+A coding agent (Claude Code, Codex, pi) interviews you, finds the public sources where your customers' pain shows up, pulls one real record, builds the tool, and ranks every company currently in the problem state by urgency. Output: a ranked call list (CSV or dashboard).
 
 ## The prompt
 
-Hand this to your coding agent:
+Paste this whole thing into your coding agent. It interviews you first, discovers the data sources itself, and doesn't build until it has seen one real record:
 
 ```
-I sell [your product] to [your ideal customer].
-My customers only buy after they've experienced [the problem].
+Build me a tool that finds companies going through the problem my product solves
+right now, and ranks them by how badly they need me.
 
-CRITICAL: paste ONE real record from your source below.
-The agent will hallucinate field names without it.
-Here is one real example record: [paste it].
+Before you write any code, interview me. One question at a time, plain language.
 
-Here's where the source data lives: [URL or description].
+1. Start by asking for my company's website. Read it and tell me what you think
+   I sell and who I sell it to, then let me correct you.
+2. Ask what a customer went through right before they needed me.
+3. Figure out where evidence of that moment shows up in public. Good hunting
+   grounds: Secretary of State registrations, state licensing boards, OSHA/FDA/
+   SEC/FCC records, court records (PACER, state portals), county property
+   records, FEC filings, IRS 990s via ProPublica, data.gov, Census API, and
+   Socrata open-data portals. Suggest sources for my industry I haven't thought of.
+4. Search those sources and the open web for my industry and geography. For each
+   candidate source, report the URL, whether it has an API or needs scraping,
+   what fields are available, and any rate limits or terms of service.
+5. Ask me where I want the ranked list to land. A CSV is fine.
+6. Ask me for one real example record from the best source. If I'm not sure
+   which field to pull, help me find and pull the right one. Study it before you
+   design anything. Do not invent field names.
+7. When you can play back my product, my customer, the moment they got burned,
+   the data sources, and the ranking logic, and I say yes, build it.
 
-Build a Python tool that:
-1. Pulls all records from the source
-2. Finds everyone currently in [the problem state]
-3. Ranks them by urgency (most recent = most urgent)
-4. Outputs a Streamlit dashboard with filters
-
-After building, add a verification function that:
-- Re-checks each result against the original source
-- Flags any row that doesn't match
-- Outputs a "needs manual review" list
+When you build:
+- Pull the records, find everyone currently in the problem state, rank by
+  urgency (most recent first, strongest buying signal as tiebreak).
+- Output a CSV or a Streamlit dashboard with filters, whichever I picked in step 5.
+- Add a verification function that re-checks each result against the original
+  source, flags any row that doesn't match, and outputs a "needs manual review"
+  list. Never skip this: hallucinated rows are worse than no rows.
 ```
 
-## Finding your data source
+## Reference: public source catalog
 
-Every industry has public signals. The prompt needs a source URL — here's how to find yours.
+The prompt above already tells the agent where to hunt. Keep this table for picking sources yourself, or for steering the agent when it guesses wrong.
 
 ### Government / regulatory data
 
@@ -51,27 +62,6 @@ Every industry has public signals. The prompt needs a source URL — here's how 
 | Campaign finance | fec.gov | API available |
 | Nonprofit filings (990) | IRS, ProPublica | ProPublica API (free) |
 
-### How to have an agent discover sources
-
-If you don't know where the data lives, ask your coding agent to find it:
-
-```
-I need public data about [industry/topic] in [geography].
-The signal I'm looking for is [companies that have experienced X].
-Search for:
-1. Government databases or registries that track this
-2. APIs that expose this data
-3. Public dashboards or search portals
-
-For each source you find, tell me:
-- The URL
-- Whether it has an API or needs scraping
-- What fields/fields are available
-- Any rate limits or terms of service
-
-Then pick the best one and build the tool.
-```
-
 ### Common API directories
 
 - **data.gov** — US government open data catalog (thousands of datasets)
@@ -84,6 +74,10 @@ Then pick the best one and build the tool.
 The most important part. Coding agents hallucinate field names when you don't give them a real example record. The verification function cross-references each result against the original source and flags mismatches.
 
 In the teardown: 585 companies scored, 3 wrong, all caught before anyone acted.
+
+## Starter server
+
+[`starter/`](starter/) has a uv + FastAPI skeleton with the same shape — ingest, rank, serve, and a `/run` placeholder where the agent wires your data source. Hand it to your agent alongside the prompt if you want an API instead of a one-off script.
 
 ## License
 
